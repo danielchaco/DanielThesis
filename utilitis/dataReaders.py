@@ -2,31 +2,35 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
-def read_lvm(path, date_i = 9, time_i = 10, header_i = 22):
+
+def read_lvm(path, date_i=9, time_i=10, header_i=22):
     '''
     input = lvm file from labview.
     return dataframe with datetime info of load cells data.
     '''
-    with open(path,'r') as f:
+    with open(path, 'r') as f:
         lines = f.readlines()
-    date_time = pd.to_datetime(lines[date_i].strip().split('\t')[1] +' ' + lines[time_i].strip().split('\t')[1])
+    date_time = pd.to_datetime(lines[date_i].strip().split('\t')[1] + ' ' + lines[time_i].strip().split('\t')[1])
     data = []
-    for line in lines[header_i+1:]:
+    for line in lines[header_i + 1:]:
         try:
             data.append(pd.to_numeric(line.strip().split('\t')))
         except:
             pass
-    df = pd.DataFrame(data,columns=lines[header_i].strip().split('\t')[:len(data[0])])
-    df['datetime'] = pd.to_timedelta(df.X_Value,unit='s') + date_time
+    df = pd.DataFrame(data, columns=lines[header_i].strip().split('\t')[:len(data[0])])
+    df['datetime'] = pd.to_timedelta(df.X_Value, unit='s') + date_time
     return df
 
-def load2zeros(df, start_i = 0, duration_s = 90):
+
+def load2zeros(df, start_i=0, duration_s=90):
     dt_ini = df.datetime[start_i]
-    dt_end = dt_ini + pd.to_timedelta(duration_s,unit='s')
-    l1,l2 = df.loc[(df.datetime>=dt_ini)&(df.datetime<=dt_end),['MS-3k-S_Loadcell (Resampled)','Airtech 3k ZLoad-CH2 (Resampled)']].mean().values
+    dt_end = dt_ini + pd.to_timedelta(duration_s, unit='s')
+    l1, l2 = df.loc[(df.datetime >= dt_ini) & (df.datetime <= dt_end), ['MS-3k-S_Loadcell (Resampled)',
+                                                                        'Airtech 3k ZLoad-CH2 (Resampled)']].mean().values
     df['MS-3k-S_Loadcell (Resampled)'] = df['MS-3k-S_Loadcell (Resampled)'] - l1
     df['Airtech 3k ZLoad-CH2 (Resampled)'] = df['Airtech 3k ZLoad-CH2 (Resampled)'] - l2
     return df
+
 
 def file_paths(folder):
     '''
@@ -38,6 +42,7 @@ def file_paths(folder):
             file_list.append(os.path.join(root, filename))
     return file_list
 
+
 def read_lines(path, get_lines=True):
     '''
     *.lvm files from labview (load cells data)
@@ -48,6 +53,7 @@ def read_lines(path, get_lines=True):
         print(line.split('\n')[0])
     if get_lines:
         return lines
+
 
 def merge_phyphox_data(phyphox_data):
     '''
@@ -89,6 +95,7 @@ def merge_phyphox_data(phyphox_data):
         print(f"Unexpected {err}, {type(err)}")
         return df
 
+
 def plot_phyphox_data(phyphox_folder):
     df = merge_phyphox_data(file_paths(phyphox_folder))
     ax = df.plot('t (s)', ['Flat Tilt up/down (deg)', 'Flat Tilt left/right (deg)',
@@ -97,7 +104,8 @@ def plot_phyphox_data(phyphox_folder):
                            'Upright Tilt up/down (deg)'], figsize=(20, 10), grid=True)
     plt.title(phyphox_folder.split('\\')[-1])
 
-def phyphox_join(folders, interpolation=True, all_data = True, out_path=None):
+
+def phyphox_join(folders, interpolation=True, all_data=True, out_path=None):
     '''
     returns a dataframe with information of several phyphox folders, recorded at
     the simultaneusly.
@@ -136,4 +144,39 @@ def phyphox_join(folders, interpolation=True, all_data = True, out_path=None):
     if all_data:
         return df
     else:
-        return df[['time']+[col for col in df.columns if 'Plane Inclination' in col]]
+        return df[['time'] + [col for col in df.columns if 'Plane Inclination' in col]]
+
+
+def printMatch(lista: list, key='2_1'):
+    """
+    :param lista: list of paths to look up the key
+    :return: print matched elements to the key
+    """
+    for i,l in enumerate(lista):
+        if key in l:
+            print(i,l)
+
+def loadDIC(path, df_DIC_info, sampleID: str, camera = 'r', by = 'lastFrame'):
+    """
+    to read a csv file and get datetime based on lastFrame or duration
+    :param path: DIC results csv path
+    :param df_DIC_info: dataframe of info recollected during the tests
+    :param sampleID: bamboo sample e.g. '2_1'
+    :param camera: 'r' or 'l' for right and left cameras
+    :return: dataframe with DIC results and datetime
+    """
+    df = pd.read_csv(path)
+    sample_data = df_DIC_info[df_DIC_info.sampleID == sampleID]
+    found = False
+    for i in sample_data.idex:
+        if camera in sample_data.camera[i]:
+            found = True
+            end_time = pd.to_datetime(sample_data.datetime[i]) - pd.to_timedelta(4,'hour')
+            break
+    if not found:
+        raise Exception('Could no find camera')
+
+    end_msec = df_DIC_info[by].values[i]
+    start_time = end_time - pd.to_timedelta(end_msec/10**6,'sec')
+    df['datetime'] = start_time + pd.to_timedelta(df.microSeconds / 10**6,'sec')
+    return df
