@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 def read_lvm(path, date_i = 9, time_i = 10, header_i = 22):
     '''
@@ -27,7 +28,6 @@ def load2zeros(df, start_i = 0, duration_s = 90):
     df['Airtech 3k ZLoad-CH2 (Resampled)'] = df['Airtech 3k ZLoad-CH2 (Resampled)'] - l2
     return df
 
-
 def file_paths(folder):
     '''
     returns list of paths of all files contained in a main folder by walking
@@ -37,7 +37,6 @@ def file_paths(folder):
         for filename in filenames:
             file_list.append(os.path.join(root, filename))
     return file_list
-
 
 def read_lines(path, get_lines=True):
     '''
@@ -49,7 +48,6 @@ def read_lines(path, get_lines=True):
         print(line.split('\n')[0])
     if get_lines:
         return lines
-
 
 def merge_phyphox_data(phyphox_data):
     '''
@@ -78,8 +76,11 @@ def merge_phyphox_data(phyphox_data):
             if 'time' in path:
                 found = True
                 df_t = pd.read_csv(path)
-                t_ini = df_t[df_t['event'] == 'START']['system time'].tolist()[0] - 20 * 60 * 60
-                df['time'] = df['t (s)'] + t_ini
+                # t_ini = df_t[df_t['event'] == 'START']['system time'].tolist()[0] - 20 * 60 * 60
+                # df['time'] = df['t (s)'] + t_ini
+                df_t['system time text'] = pd.to_datetime(df_t['system time text'])
+                t_ini = df_t['system time text'][0]
+                df['time'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
                 return df
         if not found:
             print('metadata file time.csv, not found.')
@@ -87,7 +88,6 @@ def merge_phyphox_data(phyphox_data):
     except BaseException as err:
         print(f"Unexpected {err}, {type(err)}")
         return df
-
 
 def plot_phyphox_data(phyphox_folder):
     df = merge_phyphox_data(file_paths(phyphox_folder))
@@ -97,8 +97,7 @@ def plot_phyphox_data(phyphox_folder):
                            'Upright Tilt up/down (deg)'], figsize=(20, 10), grid=True)
     plt.title(phyphox_folder.split('\\')[-1])
 
-
-def phyphox_join(folders, interpolation=True, out_path=None):
+def phyphox_join(folders, interpolation=True, all_data = True, out_path=None):
     '''
     returns a dataframe with information of several phyphox folders, recorded at
     the simultaneusly.
@@ -113,7 +112,7 @@ def phyphox_join(folders, interpolation=True, out_path=None):
     DF = []
     for folder in folders:
         folder_name = os.path.basename(folder)
-        key = 'top' if 'top' in folder_name else 'bottom' if 'bottom' in folder_name else folder_name.split('_')[2]
+        key = 'Top' if 'top' in folder_name else 'Bottom' if 'bot' in folder_name else folder_name.split('_')[2]
         df = merge_phyphox_data(folder)
         cols = []
         for col in df.columns:
@@ -134,4 +133,7 @@ def phyphox_join(folders, interpolation=True, out_path=None):
     if out_path:
         df.to_csv(out_path, index=False)
 
-    return df
+    if all_data:
+        return df
+    else:
+        return df[['time']+[col for col in df.columns if 'Plane Inclination' in col]]
