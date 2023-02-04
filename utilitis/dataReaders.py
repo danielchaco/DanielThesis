@@ -82,10 +82,8 @@ def merge_phyphox_data(phyphox_data):
     else:
         print('no dataframes')
     try:
-        found = False
         for path in data_file_paths:
             if 'time' in path:
-                found = True
                 df_t = pd.read_csv(path)
                 # t_ini = df_t[df_t['event'] == 'START']['system time'].tolist()[0] - 20 * 60 * 60
                 # df['time'] = df['t (s)'] + t_ini
@@ -93,9 +91,8 @@ def merge_phyphox_data(phyphox_data):
                 t_ini = df_t['system time text'][0]
                 df['datetime'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
                 return df
-        if not found:
-            print('metadata file time.csv, not found.')
-            return df
+        print('metadata file time.csv, not found.')
+        return df
     except BaseException as err:
         print(f"Unexpected {err}, {type(err)}")
         return df
@@ -178,7 +175,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     for i in sample_data.index:
         if camera in sample_data.camera[i]:
             found = True
-            end_time = pd.to_datetime(sample_data.datetime[i].split('+')[0]) - pd.to_timedelta(4, 'hour')
+            end_time = pd.to_datetime(sample_data.datetime[i]).tz_convert('America/Puerto_Rico')
             break
     if not found:
         raise Exception('Could no find camera')
@@ -186,6 +183,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     end_msec = df_DIC_info[by].values[i]
     start_time = end_time - pd.to_timedelta(end_msec / 10 ** 6, 'sec')
     df['datetime'] = start_time + pd.to_timedelta(df.microSeconds / 10 ** 6, 'sec')
+    df.datetime = df.datetime.dt.tz_localize(None)
     return df
 
 
