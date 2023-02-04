@@ -169,7 +169,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     :param path: DIC results csv path
     :param df_DIC_info: dataframe of info recollected during the tests
     :param sampleID: bamboo sample e.g. '2_1'
-    :param camera: 'r' or 'l' for right and left cameras
+    :param camera: 'c', 'r' or 'l' for color, right and left cameras
     :return: dataframe with DIC results and datetime
     """
     df = pd.read_csv(path)
@@ -235,17 +235,17 @@ def plotRing(df_fib, img_path, resize=200):
     fig.add_layout_image(
         dict(
             source=img,
-            x=0.1,
-            y=0.9,
+            x=0.01,
+            y=0.99,
         ))
     fig.update_layout_images(dict(
         xref="paper",
         yref="paper",
-        sizex=0.6,
-        sizey=0.6,
-        xanchor="center",
-        yanchor="middle"
+        sizex=0.36,
+        sizey=0.36,
+        xanchor="left",
+        yanchor="top"
     ))
 
-    fig.update_layout(font_family='Times New Roman', margin=dict(l=0, r=0, t=0, b=0))
+    fig.update_layout(font_family='Times New Roman', margin=dict(l=10, r=10, t=10, b=10))
     return fig
