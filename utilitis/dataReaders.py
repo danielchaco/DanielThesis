@@ -176,7 +176,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     for i in sample_data.index:
         if camera in sample_data.camera[i]:
             found = True
-            end_time = pd.to_datetime(sample_data.datetime[i]) - pd.to_timedelta(4, 'hour')
+            end_time = pd.to_datetime(sample_data.datetime[i].split('+')[0]) - pd.to_timedelta(4, 'hour')
             break
     if not found:
         raise Exception('Could no find camera')
@@ -220,4 +220,6 @@ def plotRing(df_fib, img_path):
     :param img_path: path of the scanned ring
     :return: plotly figure
     """
-    return 'in process'
+    fig = px.line(df_fib, x="ring", y="density", color='wedge')
+    fig.show()
+    return fig
