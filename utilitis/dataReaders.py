@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy import odr
 import plotly.express as px
 import plotly.graph_objects as go
+from PIL import Image
+
 
 def read_lvm(path, date_i=9, time_i=10, header_i=22):
     '''
@@ -186,7 +188,8 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     df['datetime'] = start_time + pd.to_timedelta(df.microSeconds / 10 ** 6, 'sec')
     return df
 
-def ODR_results(df, title = None): # label_x = '$\gamma$', label_y = '$\tau$ (ksi)'
+
+def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi)'
     """
     Regression using Orthogonal Distance Regression method.
     :param df:  dataframe with x and y info. x: strain, deformation, etc. y: stress,
@@ -201,25 +204,48 @@ def ODR_results(df, title = None): # label_x = '$\gamma$', label_y = '$\tau$ (ks
     output = odr_obj.run()
     a, b = output.beta
 
-    fig1 = px.scatter(df, x = cols[0], y = cols[1], opacity = 0.65)# , labels = {'x': cols[0], 'y': cols[1]}
-    fig2 = px.line(x = df[cols[0]], y = df[cols[0]]*a+b)
-    fig2.update_traces(line=dict(color = 'darkgray', width = 1, dash = 'dash'))
+    fig1 = px.scatter(df, x=cols[0], y=cols[1], opacity=0.65)  # , labels = {'x': cols[0], 'y': cols[1]}
+    fig2 = px.line(x=df[cols[0]], y=df[cols[0]] * a + b)
+    fig2.update_traces(line=dict(color='darkgray', width=1, dash='dash'))
     yl = cols[1].replace('$', '')
     xl = cols[0].replace('$', '')
-    fig2.add_annotation(x = x.min()*1.1, y = y.min()*.4, text = f'${yl} = {a}{xl}+{b}$')
+    fig2.add_annotation(x=x.min() * 1.1, y=y.min() * .4, text=f'${yl} = {a}{xl}+{b}$')
 
-    fig3 = go.Figure(data = fig1.data + fig2.data)
+    fig3 = go.Figure(data=fig1.data + fig2.data)
     fig3.show()
     return fig3, a, b
 
 
-def plotRing(df_fib, img_path):
+def plotRing(df_fib, img_path, resize=200):
     """
     generate a plotly figure of the fiber density behavior with the image of the ring
+    :param resize: the new size of the scan which is huge.
     :param df_fib: rings and wedges with fiber density results
     :param img_path: path of the scanned ring
     :return: plotly figure
     """
-    fig = px.line(df_fib, x="ring", y="density", color='wedge')
-    fig.show()
+    df_fib.replace(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
+    df_fib['t (%)'] = df_fib.ring / df_fib.ring.max()
+    df_fib = df_fib[~df_fib.ring.isin([df_fib.ring.min(), df_fib.ring.max()])]
+    fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge')
+    img = Image.open(img_path)
+    img_size = img.size
+    r = resize / img_size[0]
+    img = img.resize((resize, int(img_size[1] * r)))
+    fig.add_layout_image(
+        dict(
+            source=img,
+            x=0.1,
+            y=0.9,
+        ))
+    fig.update_layout_images(dict(
+        xref="paper",
+        yref="paper",
+        sizex=0.6,
+        sizey=0.6,
+        xanchor="center",
+        yanchor="middle"
+    ))
+
+    fig.update_layout(font_family='Times New Roman', margin=dict(l=0, r=0, t=0, b=0))
     return fig
