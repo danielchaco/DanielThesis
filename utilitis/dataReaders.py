@@ -91,7 +91,7 @@ def merge_phyphox_data(phyphox_data):
                 # df['time'] = df['t (s)'] + t_ini
                 df_t['system time text'] = pd.to_datetime(df_t['system time text'])
                 t_ini = df_t['system time text'][0]
-                df['time'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
+                df['datetime'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
                 return df
         if not found:
             print('metadata file time.csv, not found.')
@@ -247,5 +247,81 @@ def plotRing(df_fib, img_path, resize=200):
         yanchor="top"
     ))
 
-    fig.update_layout(font_family='Times New Roman', margin=dict(l=10, r=10, t=10, b=10))
+    fig.update_layout(font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=5))
     return fig
+
+
+def phy_bot_top(folders, all_data=False):
+    """
+    helps to select which is bottom or top from folders
+    :param all_data: if true returns all sensors' data, else returns just inclination data
+    :param folders: folders of bottom and top results of phyphox of same test
+    :return: dataframes of bottom and top readings
+    """
+    count = 0
+    for folder in folders:
+        if 'top' in os.path.basename(folder):
+            phy_top = merge_phyphox_data(folder)
+            count += 1
+        if 'bot' in os.path.basename(folder):
+            phy_bot = merge_phyphox_data(folder)
+            count += 1
+    if count != 2:
+        raise Exception(f'Could not find bottom or top paths in {folders}')
+    else:
+        if all_data:
+            return phy_bot, phy_top
+        else:
+            return phy_bot[['datetime'] + [col for col in phy_bot.columns if 'Plane Inclination' in col]], phy_top[
+                ['datetime'] + [col for col in phy_top.columns if 'Plane Inclination' in col]]
+
+
+def max_ortho_dist_index(df):
+    """
+    measure the perpendicular distance of a line between first and end points of a list of points
+    It is assumed that datetime and Plane Inclination are in df.
+    :param df: dataframe with x and y points
+    :return: the location where the maximum ortho distance is
+    """
+    for col in df.columns:
+        if 'Plane Inclination' in col:
+            break
+    idx = df.index
+    a, b = idx[0], idx[-1]
+    Q = df.loc[a:b, ['datetime', col]].to_numpy()
+    A = df.loc[a, ['datetime', col]].to_numpy()
+    B = df.loc[b, ['datetime', col]].to_numpy()
+    v = B - A
+    AQ = Q - A
+    d = np.abs(np.cross(v, AQ) / np.linalg.norm(v))
+    return idx[np.where(d == d.max())[0][0]]
+
+
+def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
+    """
+    define the time where the sample reaches the max load
+    :param df_load: dataframe with load cell info
+    :param failure_time_aprox: if None, it will look at points before the 60% of max time
+    :return: datetime when failure happened in the order: load, dic, phy_bot, phy_top
+    """
+    failure_time_aprox = failure_time_aprox if failure_time_aprox else df_load.datetime[int(len(df_load) * .6)]
+    max1 = df_load[df_load.datetime < failure_time_aprox]['MS-3k-S_Loadcell (Resampled)'].max()
+    max2 = df_load[df_load.datetime < failure_time_aprox]['Airtech 3k ZLoad-CH2 (Resampled)'].max()
+    failure1 = df_load[df_load['MS-3k-S_Loadcell (Resampled)'] == max1].datetime.values[0]
+    failure2 = df_load[df_load['Airtech 3k ZLoad-CH2 (Resampled)'] == max2].datetime.values[0]
+
+    time_failure_load = min(failure1, failure2)
+
+    col = 'mean' if len(df_dic.columns) > 2 else df_dic.columns[1]
+    df_tem = df_dic[(df_dic.datetime >= time_failure_load - pd.to_timedelta(10, 's')) & (
+            df_dic.datetime <= time_failure_load + pd.to_timedelta(10, 's'))]
+    df_tem['diff'] = df_tem[col].diff().abs()
+    time_failure_dic = df_dic[df_tem['diff'] == df_tem['diff'].max()].datetime.values[0]
+
+    phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+    time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
+
+    phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+    time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
+
+    return time_failure_load, time_failure_dic, time_failure_phy_bot, time_failure_phy_top
