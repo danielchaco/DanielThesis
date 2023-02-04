@@ -224,7 +224,7 @@ def plotRing(df_fib, img_path, resize=200):
     :param img_path: path of the scanned ring
     :return: plotly figure
     """
-    df_fib.replace(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
+    df_fib.rename(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
     df_fib['t (%)'] = df_fib.ring / df_fib.ring.max()
     df_fib = df_fib[~df_fib.ring.isin([df_fib.ring.min(), df_fib.ring.max()])]
     fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge')
