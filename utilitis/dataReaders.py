@@ -359,10 +359,11 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
         phy_bot[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
-        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})
+        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'}),
+        df_dic[['min', 'max', 'mean', 'median']]
         ]
     df = pd.concat(DF, axis=1).sort_values(by='datetime')
-    df.reset_index(inplace=True, drop=True)
+    df.reset_index(inplace=True)
 
     for col in df.columns:
         if col not in ['datetime']:
