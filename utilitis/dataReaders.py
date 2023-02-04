@@ -90,6 +90,7 @@ def merge_phyphox_data(phyphox_data):
                 df_t['system time text'] = pd.to_datetime(df_t['system time text'])
                 t_ini = df_t['system time text'][0]
                 df['datetime'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
+                df.datetime = df.datetime.dt.tz_localize(None)
                 return df
         print('metadata file time.csv, not found.')
         return df
@@ -284,11 +285,14 @@ def max_ortho_dist_index(df):
     for col in df.columns:
         if 'Plane Inclination' in col:
             break
+    s = df.datetime.view('int64')/10**9 # .view, .astype
+    s.rename('t',inplace = True)
+    df = pd.concat([df,s],axis=1)
     idx = df.index
     a, b = idx[0], idx[-1]
-    Q = df.loc[a:b, ['datetime', col]].to_numpy()
-    A = df.loc[a, ['datetime', col]].to_numpy()
-    B = df.loc[b, ['datetime', col]].to_numpy()
+    Q = df.loc[a:b, ['t', col]].to_numpy()
+    A = df.loc[a, ['t', col]].to_numpy()
+    B = df.loc[b, ['t', col]].to_numpy()
     v = B - A
     AQ = Q - A
     d = np.abs(np.cross(v, AQ) / np.linalg.norm(v))
@@ -313,8 +317,12 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     col = 'mean' if len(df_dic.columns) > 2 else df_dic.columns[1]
     df_tem = df_dic[(df_dic.datetime >= time_failure_load - pd.to_timedelta(10, 's')) & (
             df_dic.datetime <= time_failure_load + pd.to_timedelta(10, 's'))]
-    df_tem['diff'] = df_tem[col].diff().abs()
-    time_failure_dic = df_dic[df_tem['diff'] == df_tem['diff'].max()].datetime.values[0]
+    diff = df_tem[col].diff().abs()
+    diffname = diff.name+'_diff'
+    diff.rename(diffname,inplace=True)
+    df_tem = pd.concat([df_tem, diff], axis=1)
+
+    time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
 
     phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
     time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
@@ -323,3 +331,40 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
 
     return time_failure_load, time_failure_dic, time_failure_phy_bot, time_failure_phy_top
+
+def get_seconds(t1,t2):
+    """
+    difference of time between t1 and t2. t2 >= t1
+    :param t1: datetime or timestamp of first time
+    :param t2: datetime or timestamp of first time
+    :return: time in seconds t2 - t1
+    """
+    try:
+        return (t1 - t2).total_seconds()
+    except:
+        return (t1 - t2).item()/10**9
+
+
+def mergeData(df_load, phy_bot, phy_top, df_dic):
+    """
+    marge load cell, phones and DIC data, after matching failure point
+    :param df_load:
+    :param phy_bot:
+    :param phy_top:
+    :param df_dic:
+    :return: dataframe with all data
+    """
+    for df in df_load, phy_bot, phy_top, df_dic:
+        df.set_index('datetime',inplace=True)
+    DF = [
+        df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
+        phy_bot[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
+        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})
+        ]
+    df = pd.concat(DF, axis=1).sort_values(by='datetime')
+    df.reset_index(inplace=True, drop=True)
+
+    for col in df.columns:
+        if col not in ['datetime']:
+            df[col] = df[col].interpolate()
+    return df
