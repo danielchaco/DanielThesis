@@ -407,17 +407,20 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     """
     for df in df_load, phy_bot, phy_top, df_dic:
         df.set_index('datetime', inplace=True)
+    df_phones = pd.concat([phy_bot[['Plane Inclination (deg)']].rename(
+            columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
+        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})],axis=1).sort_values(by='datetime')
+    df_phones.reset_index(drop=True,incplace=True)
+    df_phones.interpolate(inplace=True)
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
-        phy_bot[['Plane Inclination (deg)']].rename(
-            columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
-        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'}),
+        df_phones,
         df_dic[['min', 'max', 'mean', 'median']]
     ]
     df = pd.concat(DF, axis=1).sort_values(by='datetime')
     df.reset_index(inplace=True)
 
     for col in df.columns:
-        if col not in ['datetime', 'Bottom Plane Inclination (deg)', 'Top Plane Inclination (deg)', 'mean']:
+        if col not in ['datetime', 'Bottom Plane Inclination (deg)', 'Top Plane Inclination (deg)', 'min', 'max', 'mean', 'median']:
             df[col] = df[col].interpolate()
     return df
