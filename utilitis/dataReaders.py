@@ -231,7 +231,7 @@ def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=No
         colors = px.colors.qualitative.Pastel
     df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
     df.reset_index(drop=True, inplace=True)
-    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=.2)
+    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=1)
     fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
     fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
                       xaxis=dict(title='$\gamma$'), legend_title="",
@@ -242,8 +242,7 @@ def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=No
     to = int(len(df) * 0.5)
     G = []
     for i, col in enumerate(cols):
-        df_c = df.copy()
-        df_c.drop(columns=[col],inplace=True)
+        df_c = df[~pd.isnull(df[col])]
         x = df_c.loc[frm:to, col].to_numpy()
         y = df_c.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
         data = odr.Data(x, y)
@@ -412,7 +411,6 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     df_phones = pd.concat([phy_bot[['Plane Inclination (deg)']].rename(
             columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
         phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})],axis=1).sort_values(by='datetime')
-    df_phones.reset_index(drop=True,incplace=True)
     df_phones.interpolate(inplace=True)
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
