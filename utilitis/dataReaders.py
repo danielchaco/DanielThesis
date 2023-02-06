@@ -307,8 +307,8 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     :return: datetime when failure happened in the order: load, dic, phy_bot, phy_top
     """
     df_load = df_load.copy()
-    df_load['MS_diff'] = df_load['MS-3k-S_Loadcell (Resampled)'].diff()
-    df_load['Air_diff'] = df_load['Airtech 3k ZLoad-CH2 (Resampled)'].diff()
+    df_load['MS_diff'] = df_load['MS-3k-S_Loadcell (Resampled)'].diff().abs()
+    df_load['Air_diff'] = df_load['Airtech 3k ZLoad-CH2 (Resampled)'].diff().abs()
     failure_time_aprox = failure_time_aprox if failure_time_aprox else df_load.datetime[int(len(df_load) * .6)]
     max1 = df_load[df_load.datetime < failure_time_aprox]['MS_diff'].max()
     max2 = df_load[df_load.datetime < failure_time_aprox]['Air_diff'].max()
