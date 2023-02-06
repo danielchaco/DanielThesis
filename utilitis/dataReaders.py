@@ -240,10 +240,12 @@ def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=No
     max_tau = df['$\\tau (ksi)$'].max()
     frm = int(len(df) * 0.05)
     to = int(len(df) * 0.5)
-    y = df.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
     G = []
     for i, col in enumerate(cols):
-        x = df.loc[frm:to, col].to_numpy()
+        df_c = df.copy()
+        df_c.drop(columns=[col],inplace=True)
+        x = df_c.loc[frm:to, col].to_numpy()
+        y = df_c.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
         data = odr.Data(x, y)
         odr_obj = odr.ODR(data, odr.unilinear)
         output = odr_obj.run()
