@@ -197,7 +197,7 @@ def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi
     :return: plotly figure and a and b constants of the equation y = ax + b
     """
     cols = df.columns
-    x, y = df[cols[0]], df[cols[1]]
+    x, y = df[cols[0]].to_numpy(), df[cols[1]].to_numpy()
     data = odr.Data(x, y)
     odr_obj = odr.ODR(data, odr.unilinear)
     output = odr_obj.run()
@@ -306,11 +306,14 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     :param failure_time_aprox: if None, it will look at points before the 60% of max time
     :return: datetime when failure happened in the order: load, dic, phy_bot, phy_top
     """
+    df_load = df_load.copy()
+    df_load['MS_diff'] = df_load['MS-3k-S_Loadcell (Resampled)'].diff()
+    df_load['Air_diff'] = df_load['Airtech 3k ZLoad-CH2 (Resampled)'].diff()
     failure_time_aprox = failure_time_aprox if failure_time_aprox else df_load.datetime[int(len(df_load) * .6)]
-    max1 = df_load[df_load.datetime < failure_time_aprox]['MS-3k-S_Loadcell (Resampled)'].max()
-    max2 = df_load[df_load.datetime < failure_time_aprox]['Airtech 3k ZLoad-CH2 (Resampled)'].max()
-    failure1 = df_load[df_load['MS-3k-S_Loadcell (Resampled)'] == max1].datetime.values[0]
-    failure2 = df_load[df_load['Airtech 3k ZLoad-CH2 (Resampled)'] == max2].datetime.values[0]
+    max1 = df_load[df_load.datetime < failure_time_aprox]['MS_diff'].max()
+    max2 = df_load[df_load.datetime < failure_time_aprox]['Air_diff'].max()
+    failure1 = df_load[df_load['MS_diff'] == max1].datetime.values[0]
+    failure2 = df_load[df_load['Air_diff'] == max2].datetime.values[0]
 
     time_failure_load = min(failure1, failure2)
 
