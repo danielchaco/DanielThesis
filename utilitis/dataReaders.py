@@ -215,6 +215,51 @@ def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi
     return fig3, a, b
 
 
+def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=None):
+    """
+    Regression using Orthogonal Distance Regression method.
+    resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
+    :param df:  dataframe with merged data.
+    :param title: optional.
+    :return: plotly figure and a and b constants of the equation y = ax + b
+    """
+    start_time = start_time if type(start_time) != str else pd.to_datetime(start_time)
+    end_time = end_time if type(end_time) != str else pd.to_datetime(end_time)
+    cols = [col for col in df.columns if col in ['$\gamma_{DIC}$', '$\gamma_{phones}$']]
+    if not colors:
+        # colors = px.colors.sequential.thermal
+        colors = px.colors.qualitative.Pastel
+    df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
+    df.reset_index(drop=True, inplace=True)
+    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=.2)
+    fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
+    fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
+                      xaxis=dict(title='$\gamma$'), legend_title="",
+                      legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
+    # trendlines
+    max_tau = df['$\\tau (ksi)$'].max()
+    frm = int(len(df) * 0.05)
+    to = int(len(df) * 0.5)
+    y = df.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
+    G = []
+    for i, col in enumerate(cols):
+        x = df.loc[frm:to, col].to_numpy()
+        data = odr.Data(x, y)
+        odr_obj = odr.ODR(data, odr.unilinear)
+        output = odr_obj.run()
+        a, b = output.beta
+        x = np.linspace(0, (max_tau - b) / a, 100)
+        fig.add_trace(go.Scattergl(x=x, y=x * a + b, mode='lines', name=f'$\\tau={b:.3f}+{a:.3f}\gamma$',
+                                   line={'width': 1, 'dash': ['dash', 'dashdot'][i], 'color': px.colors.sequential.gray[
+                                       i * 4]}))  # ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot','solid']
+        G.append(a)
+    if title:
+        fig.update_layout(title=title)
+    if fig_show:
+        fig.show()
+    return fig, G
+
+
 def plotRing(df_fib, img_path, resize=200):
     """
     generate a plotly figure of the fiber density behavior with the image of the ring
@@ -285,9 +330,9 @@ def max_ortho_dist_index(df):
     for col in df.columns:
         if 'Plane Inclination' in col:
             break
-    s = df.datetime.view('int64')/10**9 # .view, .astype
-    s.rename('t',inplace = True)
-    df = pd.concat([df,s],axis=1)
+    s = df.datetime.view('int64') / 10 ** 9  # .view, .astype
+    s.rename('t', inplace=True)
+    df = pd.concat([df, s], axis=1)
     idx = df.index
     a, b = idx[0], idx[-1]
     Q = df.loc[a:b, ['t', col]].to_numpy()
@@ -321,21 +366,24 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     df_tem = df_dic[(df_dic.datetime >= time_failure_load - pd.to_timedelta(10, 's')) & (
             df_dic.datetime <= time_failure_load + pd.to_timedelta(10, 's'))]
     diff = df_tem[col].diff().abs()
-    diffname = diff.name+'_diff'
-    diff.rename(diffname,inplace=True)
+    diffname = diff.name + '_diff'
+    diff.rename(diffname, inplace=True)
     df_tem = pd.concat([df_tem, diff], axis=1)
 
     time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
 
-    phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+    phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
+                phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
     time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
 
-    phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+    phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
+                phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
     time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
 
     return time_failure_load, time_failure_dic, time_failure_phy_bot, time_failure_phy_top
 
-def get_seconds(t1,t2):
+
+def get_seconds(t1, t2):
     """
     difference of time between t1 and t2. t2 >= t1
     :param t1: datetime or timestamp of first time
@@ -345,7 +393,7 @@ def get_seconds(t1,t2):
     try:
         return (t1 - t2).total_seconds()
     except:
-        return (t1 - t2).item()/10**9
+        return (t1 - t2).item() / 10 ** 9
 
 
 def mergeData(df_load, phy_bot, phy_top, df_dic):
@@ -358,17 +406,18 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     :return: dataframe with all data
     """
     for df in df_load, phy_bot, phy_top, df_dic:
-        df.set_index('datetime',inplace=True)
+        df.set_index('datetime', inplace=True)
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
-        phy_bot[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
+        phy_bot[['Plane Inclination (deg)']].rename(
+            columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
         phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'}),
         df_dic[['min', 'max', 'mean', 'median']]
-        ]
+    ]
     df = pd.concat(DF, axis=1).sort_values(by='datetime')
     df.reset_index(inplace=True)
 
     for col in df.columns:
-        if col not in ['datetime']:
+        if col not in ['datetime', 'Bottom Plane Inclination (deg)', 'Top Plane Inclination (deg)', 'mean']:
             df[col] = df[col].interpolate()
     return df
