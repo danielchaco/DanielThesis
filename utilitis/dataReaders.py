@@ -156,8 +156,12 @@ def printMatch(lista: list, key='2_1'):
     :return: print matched elements to the key
     """
     for i, l in enumerate(lista):
-        if key in l:
+        try:
+            if key in l:
+                print(i, l)
+        except:
             print(i, l)
+            pass
 
 
 def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
@@ -215,7 +219,7 @@ def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi
     return fig3, a, b
 
 
-def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=None):
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None):
     """
     Regression using Orthogonal Distance Regression method.
     resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
@@ -231,13 +235,13 @@ def ODR_results(df, start_time, end_time, fig_show = True, title=None, colors=No
         colors = px.colors.qualitative.Pastel
     df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
     df.reset_index(drop=True, inplace=True)
+    max_tau = df['$\\tau (ksi)$'].max()
     fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=1)
     fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
     fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
-                      xaxis=dict(title='$\gamma$'), legend_title="",
+                      xaxis=dict(title='$\gamma$'), legend_title="", yaxis_range=[0, max_tau],
                       legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
     # trendlines
-    max_tau = df['$\\tau (ksi)$'].max()
     frm = int(len(df) * 0.05)
     to = int(len(df) * 0.5)
     G = []
@@ -374,11 +378,11 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
     time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
 
     phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
-                phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+            phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
     time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
 
     phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
-                phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+            phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
     time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
 
     return time_failure_load, time_failure_dic, time_failure_phy_bot, time_failure_phy_top
@@ -406,11 +410,19 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     :param df_dic:
     :return: dataframe with all data
     """
+    df_load, df_dic = df_load.copy(), df_dic.copy()
+    phy_bot = phy_bot[['datetime', 'Plane Inclination (deg)']].rename(
+        columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'})
+    phy_top = phy_top[['datetime', 'Plane Inclination (deg)']].rename(
+        columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})
+
     for df in df_load, phy_bot, phy_top, df_dic:
         df.set_index('datetime', inplace=True)
-    df_phones = pd.concat([phy_bot[['Plane Inclination (deg)']].rename(
-            columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'}),
-        phy_top[['Plane Inclination (deg)']].rename(columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})],axis=1).sort_values(by='datetime')
+
+    phy_bot = phy_bot.loc[~phy_bot.index.duplicated(keep='first')]
+    phy_top = phy_top.loc[~phy_top.index.duplicated(keep='first')]
+
+    df_phones = pd.concat([phy_bot, phy_top], axis=1).sort_values(by='datetime')
     df_phones.interpolate(inplace=True)
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
@@ -421,6 +433,7 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     df.reset_index(inplace=True)
 
     for col in df.columns:
-        if col not in ['datetime', 'Bottom Plane Inclination (deg)', 'Top Plane Inclination (deg)', 'min', 'max', 'mean', 'median']:
+        if col not in ['datetime', 'Bottom Plane Inclination (deg)', 'Top Plane Inclination (deg)', 'min', 'max',
+                       'mean', 'median']:
             df[col] = df[col].interpolate()
     return df
