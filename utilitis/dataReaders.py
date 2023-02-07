@@ -219,7 +219,7 @@ def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi
     return fig3, a, b
 
 
-def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None):
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max = (0.15,0.5)):
     """
     Regression using Orthogonal Distance Regression method.
     resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
@@ -242,8 +242,8 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
                       xaxis=dict(title='$\gamma$'), legend_title="", yaxis_range=[0, max_tau],
                       legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
     # trendlines
-    frm = int(len(df) * 0.05)
-    to = int(len(df) * 0.5)
+    frm = int(len(df) * min_max[0])
+    to = int(len(df) * min_max[1])
     G = []
     for i, col in enumerate(cols):
         df_c = df[~pd.isnull(df[col])]
@@ -276,7 +276,7 @@ def plotRing(df_fib, img_path, resize=200):
     df_fib.rename(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
     df_fib['t (%)'] = df_fib.ring / df_fib.ring.max()
     df_fib = df_fib[~df_fib.ring.isin([df_fib.ring.min(), df_fib.ring.max()])]
-    fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge')
+    fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge', template='plotly_white')
     img = Image.open(img_path)
     img_size = img.size
     r = resize / img_size[0]
