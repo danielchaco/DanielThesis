@@ -192,31 +192,50 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     return df
 
 
-def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi)'
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max = (0.15,0.5)):
     """
     Regression using Orthogonal Distance Regression method.
-    :param df:  dataframe with x and y info. x: strain, deformation, etc. y: stress,
-    shear stress, torque, etc.
+    resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
+    :param df:  dataframe with merged data.
     :param title: optional.
     :return: plotly figure and a and b constants of the equation y = ax + b
     """
-    cols = df.columns
-    x, y = df[cols[0]].to_numpy(), df[cols[1]].to_numpy()
-    data = odr.Data(x, y)
-    odr_obj = odr.ODR(data, odr.unilinear)
-    output = odr_obj.run()
-    a, b = output.beta
-
-    fig1 = px.scatter(df, x=cols[0], y=cols[1], opacity=0.65)  # , labels = {'x': cols[0], 'y': cols[1]}
-    fig2 = px.line(x=df[cols[0]], y=df[cols[0]] * a + b)
-    fig2.update_traces(line=dict(color='darkgray', width=1, dash='dash'))
-    yl = cols[1].replace('$', '')
-    xl = cols[0].replace('$', '')
-    fig2.add_annotation(x=x.min() * 1.1, y=y.min() * .4, text=f'${yl} = {a}{xl}+{b}$')
-
-    fig3 = go.Figure(data=fig1.data + fig2.data)
-    fig3.show()
-    return fig3, a, b
+    start_time = start_time if type(start_time) != str else pd.to_datetime(start_time)
+    end_time = end_time if type(end_time) != str else pd.to_datetime(end_time)
+    cols = [col for col in df.columns if col in ['$\gamma_{DIC}$', '$\gamma_{phones}$']]
+    if not colors:
+        # colors = px.colors.sequential.thermal
+        colors = px.colors.qualitative.Pastel
+    df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
+    df.reset_index(drop=True, inplace=True)
+    max_tau = df['$\\tau (ksi)$'].max()
+    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=1)
+    fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
+    fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
+                      xaxis=dict(title='$\gamma$'), legend_title="", yaxis_range=[0, max_tau],
+                      legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
+    # trendlines
+    frm = int(len(df) * min_max[0])
+    to = int(len(df) * min_max[1])
+    G = []
+    for i, col in enumerate(cols):
+        df_c = df[~pd.isnull(df[col])]
+        x = df_c.loc[frm:to, col].to_numpy()
+        y = df_c.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
+        data = odr.Data(x, y)
+        odr_obj = odr.ODR(data, odr.unilinear)
+        output = odr_obj.run()
+        a, b = output.beta
+        x = np.linspace(0, (max_tau - b) / a, 100)
+        fig.add_trace(go.Scattergl(x=x, y=x * a + b, mode='lines', name=f'$\\tau={b:.3f}+{a:.3f}\gamma$',
+                                   line={'width': 1, 'dash': ['dash', 'dashdot'][i], 'color': px.colors.sequential.gray[
+                                       i * 4]}))  # ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot','solid']
+        G.append(a)
+    if title:
+        fig.update_layout(title=title)
+    if fig_show:
+        fig.show()
+    return fig, G
 
 
 def plotRing(df_fib, img_path, resize=200, figureOpt = 1):
@@ -237,7 +256,8 @@ def plotRing(df_fib, img_path, resize=200, figureOpt = 1):
     if figureOpt == 1:
         pass
     elif figureOpt == 2:
-        fig.update_traces(line=dict(color='darkgray', width=10), opacity=0.5)
+        fig.update_traces(line=dict(color='darkgray', width=13), opacity=0.5)
+        fig.update_layout(showlegend = False)
     elif figureOpt == 3:
         fig.update_traces(line=dict(width=10), opacity=0.5)
     else:
