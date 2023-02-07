@@ -219,55 +219,10 @@ def ODR_results(df, title=None):  # label_x = '$\gamma$', label_y = '$\tau$ (ksi
     return fig3, a, b
 
 
-def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max = (0.15,0.5)):
-    """
-    Regression using Orthogonal Distance Regression method.
-    resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
-    :param df:  dataframe with merged data.
-    :param title: optional.
-    :return: plotly figure and a and b constants of the equation y = ax + b
-    """
-    start_time = start_time if type(start_time) != str else pd.to_datetime(start_time)
-    end_time = end_time if type(end_time) != str else pd.to_datetime(end_time)
-    cols = [col for col in df.columns if col in ['$\gamma_{DIC}$', '$\gamma_{phones}$']]
-    if not colors:
-        # colors = px.colors.sequential.thermal
-        colors = px.colors.qualitative.Pastel
-    df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
-    df.reset_index(drop=True, inplace=True)
-    max_tau = df['$\\tau (ksi)$'].max()
-    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=1)
-    fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
-    fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
-                      xaxis=dict(title='$\gamma$'), legend_title="", yaxis_range=[0, max_tau],
-                      legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
-    # trendlines
-    frm = int(len(df) * min_max[0])
-    to = int(len(df) * min_max[1])
-    G = []
-    for i, col in enumerate(cols):
-        df_c = df[~pd.isnull(df[col])]
-        x = df_c.loc[frm:to, col].to_numpy()
-        y = df_c.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
-        data = odr.Data(x, y)
-        odr_obj = odr.ODR(data, odr.unilinear)
-        output = odr_obj.run()
-        a, b = output.beta
-        x = np.linspace(0, (max_tau - b) / a, 100)
-        fig.add_trace(go.Scattergl(x=x, y=x * a + b, mode='lines', name=f'$\\tau={b:.3f}+{a:.3f}\gamma$',
-                                   line={'width': 1, 'dash': ['dash', 'dashdot'][i], 'color': px.colors.sequential.gray[
-                                       i * 4]}))  # ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot','solid']
-        G.append(a)
-    if title:
-        fig.update_layout(title=title)
-    if fig_show:
-        fig.show()
-    return fig, G
-
-
-def plotRing(df_fib, img_path, resize=200):
+def plotRing(df_fib, img_path, resize=200, figureOpt = 1):
     """
     generate a plotly figure of the fiber density behavior with the image of the ring
+    :param figureOpt: 1 for clasic color lines, 2 for wide gray traces, 3 wide color traces.
     :param resize: the new size of the scan which is huge.
     :param df_fib: rings and wedges with fiber density results
     :param img_path: path of the scanned ring
@@ -276,7 +231,17 @@ def plotRing(df_fib, img_path, resize=200):
     df_fib.rename(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
     df_fib['t (%)'] = df_fib.ring / df_fib.ring.max()
     df_fib = df_fib[~df_fib.ring.isin([df_fib.ring.min(), df_fib.ring.max()])]
+
     fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge', template='plotly_white')
+
+    if figureOpt == 1:
+        pass
+    elif figureOpt == 2:
+        fig.update_traces(line=dict(color='darkgray', width=10), opacity=0.5)
+    elif figureOpt == 3:
+        fig.update_traces(line=dict(width=10), opacity=0.5)
+    else:
+        raise Exception('Enter a valid figureOpt: 1, 2, 3')
     img = Image.open(img_path)
     img_size = img.size
     r = resize / img_size[0]
@@ -284,16 +249,16 @@ def plotRing(df_fib, img_path, resize=200):
     fig.add_layout_image(
         dict(
             source=img,
-            x=0.01,
-            y=0.99,
+            x=0.95,
+            y=0.1,
         ))
     fig.update_layout_images(dict(
         xref="paper",
         yref="paper",
-        sizex=0.36,
-        sizey=0.36,
-        xanchor="left",
-        yanchor="top"
+        sizex=0.30,
+        sizey=0.30,
+        xanchor="right",
+        yanchor="bottom"
     ))
 
     fig.update_layout(font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=5))
