@@ -85,20 +85,18 @@ def merge_phyphox_data(phyphox_data):
         for path in data_file_paths:
             if 'time' in path:
                 df_t = pd.read_csv(path)
-                df_t['system time text'] = pd.to_datetime(df_t['system time text'])
                 start, end = None, None
                 for i in df_t.index:
                     if 'START' in df_t.event[i]:
-                        start = i #df_t['experimet time'].event[i]
+                        start = i
                     elif 'PAUSE' in df_t.event[i]:
-                        end = i #df_t['experimet time'].event[i]
-                    if start and end:
-                        frm = df.index[df['t (s)']==df_t['experimet time'][start]].tolist()
-                        to = df.index[df['t (s)']==df_t['experimet time'][end]].tolist()
-                        if len(frm) > 1:
-                            df.loc[frm[1]:to[0],'datetime'] = df_t['system time text'][start]
+                        end = i
+                    if start is not None and end is not None:
+                        frm = df.index[df['t (s)'] > df_t['experiment time'][start]]
+                        to = df.index[df['t (s)'] <= df_t['experiment time'][end]]
+                        df.loc[frm[0]:to[-1], 'datetime'] = df_t['system time text'][start]
                         start, end = None, None
-                df['datetime'] = df['datetime'] + pd.to_timedelta(df['t (s)'], unit='s')
+                df['datetime'] = pd.to_datetime(df['datetime']) + pd.to_timedelta(df['t (s)'], unit='s')
                 df.datetime = df.datetime.dt.tz_localize(None)
                 return df
         print('metadata file time.csv, not found.')
@@ -201,7 +199,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     return df
 
 
-def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max = (0.15,0.5)):
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max=(0.15, 0.5)):
     """
     Regression using Orthogonal Distance Regression method.
     resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
@@ -247,7 +245,7 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     return fig, G
 
 
-def plotRing(df_fib, img_path, resize=200, figureOpt = 1):
+def plotRing(df_fib, img_path, resize=200, figureOpt=1):
     """
     generate a plotly figure of the fiber density behavior with the image of the ring
     :param figureOpt: 1 for clasic color lines, 2 for wide gray traces, 3 wide color traces.
@@ -266,7 +264,7 @@ def plotRing(df_fib, img_path, resize=200, figureOpt = 1):
         pass
     elif figureOpt == 2:
         fig.update_traces(line=dict(color='darkgray', width=13), opacity=0.5)
-        fig.update_layout(showlegend = False)
+        fig.update_layout(showlegend=False)
     elif figureOpt == 3:
         fig.update_traces(line=dict(width=10), opacity=0.5)
     else:
