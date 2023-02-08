@@ -95,8 +95,10 @@ def merge_phyphox_data(phyphox_data):
                         frm = df.index[df['t (s)'] > df_t['experiment time'][start]]
                         to = df.index[df['t (s)'] <= df_t['experiment time'][end]]
                         df.loc[frm[0]:to[-1], 'datetime'] = df_t['system time text'][start]
+                        df.loc[frm[0]:to[-1], 't'] = df.loc[frm[0]:to[-1], 't (s)'] - df_t['experiment time'][start]
                         start, end = None, None
-                df['datetime'] = pd.to_datetime(df['datetime']) + pd.to_timedelta(df['t (s)'], unit='s')
+                df['datetime'] = pd.to_datetime(df['datetime']) + pd.to_timedelta(df['t'], unit='s')
+                df.drop(columns=['t'],inplace=True)
                 df.datetime = df.datetime.dt.tz_localize(None)
                 return df
         print('metadata file time.csv, not found.')
@@ -341,9 +343,11 @@ def max_ortho_dist_index(df):
     return idx[np.where(d == d.max())[0][0]]
 
 
-def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
+def failure_times(df_load, df_dic, phy_bot = None, phy_top = None, failure_time_aprox= None):
     """
     define the time where the sample reaches the max load
+    :param phy_top:
+    :param phy_bot:
     :param df_load: dataframe with load cell info
     :param failure_time_aprox: if None, it will look at points before the 60% of max time
     :return: datetime when failure happened in the order: load, dic, phy_bot, phy_top
@@ -369,13 +373,19 @@ def failure_times(df_load, df_dic, phy_bot, phy_top, failure_time_aprox: None):
 
     time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
 
-    phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
-            phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
-    time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
+    if phy_bot is not None:
+        phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
+                phy_bot.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+        time_failure_phy_bot = phy_bot.datetime[max_ortho_dist_index(phy_bot_slice)]
+    else:
+        time_failure_phy_bot = None
 
-    phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
-            phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
-    time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
+    if phy_top is not None:
+        phy_top_slice = phy_top[(phy_top.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
+                phy_top.datetime <= time_failure_load + pd.to_timedelta(20, 's'))]
+        time_failure_phy_top = phy_top.datetime[max_ortho_dist_index(phy_top_slice)]
+    else:
+        time_failure_phy_top = None
 
     return time_failure_load, time_failure_dic, time_failure_phy_bot, time_failure_phy_top
 
