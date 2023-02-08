@@ -85,11 +85,20 @@ def merge_phyphox_data(phyphox_data):
         for path in data_file_paths:
             if 'time' in path:
                 df_t = pd.read_csv(path)
-                # t_ini = df_t[df_t['event'] == 'START']['system time'].tolist()[0] - 20 * 60 * 60
-                # df['time'] = df['t (s)'] + t_ini
                 df_t['system time text'] = pd.to_datetime(df_t['system time text'])
-                t_ini = df_t['system time text'][0]
-                df['datetime'] = pd.to_timedelta(df['t (s)'], unit='s') + t_ini
+                start, end = None, None
+                for i in df_t.index:
+                    if 'START' in df_t.event[i]:
+                        start = i #df_t['experimet time'].event[i]
+                    elif 'PAUSE' in df_t.event[i]:
+                        end = i #df_t['experimet time'].event[i]
+                    if start and end:
+                        frm = df.index[df['t (s)']==df_t['experimet time'][start]].tolist()
+                        to = df.index[df['t (s)']==df_t['experimet time'][end]].tolist()
+                        if len(frm) > 1:
+                            df.loc[frm[1]:to[0],'datetime'] = df_t['system time text'][start]
+                        start, end = None, None
+                df['datetime'] = df['datetime'] + pd.to_timedelta(df['t (s)'], unit='s')
                 df.datetime = df.datetime.dt.tz_localize(None)
                 return df
         print('metadata file time.csv, not found.')
