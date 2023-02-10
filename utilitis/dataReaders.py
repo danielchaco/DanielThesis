@@ -403,7 +403,7 @@ def get_seconds(t1, t2):
         return (t1 - t2).item() / 10 ** 9
 
 
-def mergeData(df_load, phy_bot, phy_top, df_dic):
+def mergeData(df_load, df_dic, phy_bot = None, phy_top = None):
     """
     marge load cell, phones and DIC data, after matching failure point
     :param df_load:
@@ -413,24 +413,35 @@ def mergeData(df_load, phy_bot, phy_top, df_dic):
     :return: dataframe with all data
     """
     df_load, df_dic = df_load.copy(), df_dic.copy()
-    phy_bot = phy_bot[['datetime', 'Plane Inclination (deg)']].rename(
-        columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'})
-    phy_top = phy_top[['datetime', 'Plane Inclination (deg)']].rename(
-        columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})
+    if phy_bot is not None:
+        phy_bot = phy_bot[['datetime', 'Plane Inclination (deg)']].rename(
+            columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'})
+    if phy_top is not None:
+        phy_top = phy_top[['datetime', 'Plane Inclination (deg)']].rename(
+            columns={'Plane Inclination (deg)': 'Top Plane Inclination (deg)'})
 
     for df in df_load, phy_bot, phy_top, df_dic:
-        df.set_index('datetime', inplace=True)
+        try:
+            df.set_index('datetime', inplace=True)
+        except:
+            pass
 
-    phy_bot = phy_bot.loc[~phy_bot.index.duplicated(keep='first')]
-    phy_top = phy_top.loc[~phy_top.index.duplicated(keep='first')]
+    if phy_bot is not None:
+        phy_bot = phy_bot.loc[~phy_bot.index.duplicated(keep='first')]
+    if phy_top is not None:
+        phy_top = phy_top.loc[~phy_top.index.duplicated(keep='first')]
 
-    df_phones = pd.concat([phy_bot, phy_top], axis=1).sort_values(by='datetime')
-    df_phones.interpolate(inplace=True)
+    if phy_bot is not None and phy_top is not None:
+        df_phones = pd.concat([phy_bot, phy_top], axis=1).sort_values(by='datetime')
+        df_phones.interpolate(inplace=True)
+    else:
+        df_phones = []
+
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
-        df_phones,
         df_dic[['min', 'max', 'mean', 'median']]
     ]
+    DF += df_phones
     df = pd.concat(DF, axis=1).sort_values(by='datetime')
     df.reset_index(inplace=True)
 
