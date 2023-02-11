@@ -343,7 +343,7 @@ def max_ortho_dist_index(df):
     return idx[np.where(d == d.max())[0][0]]
 
 
-def failure_times(df_load, df_dic, phy_bot = None, phy_top = None, failure_time_aprox= None):
+def failure_times(df_load, df_dic = None, phy_bot = None, phy_top = None, failure_time_aprox= None):
     """
     define the time where the sample reaches the max load
     :param phy_top:
@@ -363,15 +363,18 @@ def failure_times(df_load, df_dic, phy_bot = None, phy_top = None, failure_time_
 
     time_failure_load = min(failure1, failure2)
 
-    col = 'mean' if len(df_dic.columns) > 2 else df_dic.columns[1]
-    df_tem = df_dic[(df_dic.datetime >= time_failure_load - pd.to_timedelta(10, 's')) & (
-            df_dic.datetime <= time_failure_load + pd.to_timedelta(10, 's'))]
-    diff = df_tem[col].diff().abs()
-    diffname = diff.name + '_diff'
-    diff.rename(diffname, inplace=True)
-    df_tem = pd.concat([df_tem, diff], axis=1)
+    if df_dic is not None:
+        col = 'mean' if len(df_dic.columns) > 2 else df_dic.columns[1]
+        df_tem = df_dic[(df_dic.datetime >= time_failure_load - pd.to_timedelta(10, 's')) & (
+                df_dic.datetime <= time_failure_load + pd.to_timedelta(10, 's'))]
+        diff = df_tem[col].diff().abs()
+        diffname = diff.name + '_diff'
+        diff.rename(diffname, inplace=True)
+        df_tem = pd.concat([df_tem, diff], axis=1)
 
-    time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
+        time_failure_dic = df_tem[df_tem[diffname] == df_tem[diffname].max()].datetime.values[0]
+    else:
+        time_failure_dic = None
 
     if phy_bot is not None:
         phy_bot_slice = phy_bot[(phy_bot.datetime >= time_failure_load - pd.to_timedelta(20, 's')) & (
@@ -403,7 +406,7 @@ def get_seconds(t1, t2):
         return (t1 - t2).item() / 10 ** 9
 
 
-def mergeData(df_load, df_dic, phy_bot = None, phy_top = None):
+def mergeData(df_load, df_dic = None, phy_bot = None, phy_top = None):
     """
     marge load cell, phones and DIC data, after matching failure point
     :param df_load:
@@ -412,7 +415,7 @@ def mergeData(df_load, df_dic, phy_bot = None, phy_top = None):
     :param df_dic:
     :return: dataframe with all data
     """
-    df_load, df_dic = df_load.copy(), df_dic.copy()
+    # df_load, df_dic = df_load.copy(), df_dic.copy()
     if phy_bot is not None:
         phy_bot = phy_bot[['datetime', 'Plane Inclination (deg)']].rename(
             columns={'Plane Inclination (deg)': 'Bottom Plane Inclination (deg)'})
@@ -434,13 +437,17 @@ def mergeData(df_load, df_dic, phy_bot = None, phy_top = None):
     if phy_bot is not None and phy_top is not None:
         df_phones = pd.concat([phy_bot, phy_top], axis=1).sort_values(by='datetime')
         df_phones.interpolate(inplace=True)
+        df_phones = [df_phones]
     else:
         df_phones = []
 
     DF = [
         df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']],
         df_dic[['min', 'max', 'mean', 'median']]
+    ] if df_dic is not None else [
+        df_load[['MS-3k-S_Loadcell (Resampled)', 'Airtech 3k ZLoad-CH2 (Resampled)']]
     ]
+
     DF += df_phones
     df = pd.concat(DF, axis=1).sort_values(by='datetime')
     df.reset_index(inplace=True)
