@@ -256,9 +256,26 @@ def plotRing(df_fib, img_path, resize=200, figureOpt=1):
     :param img_path: path of the scanned ring
     :return: plotly figure
     """
+    df_fib['ddiff'] = [np.nan] * len(df_fib)
+    for w in df_fib.wedge.unique():
+        for r in df_fib.ring.unique():
+            try:
+                df_fib.loc[(df_fib.ring == r) & (df_fib.wedge == w), 'ddiff'] = \
+                df_fib.loc[(df_fib.ring == r) & (df_fib.wedge == w), 'density'].values[0] - \
+                df_fib.loc[(df_fib.ring == r - 1) & (df_fib.wedge == w), 'density'].values[0]
+            except:
+                pass
+    df_fib.ddiff = df_fib.ddiff.abs()
+    df_fib.loc[(df_fib.ring > df_fib.ring.max() / 2) & (df_fib.ddiff > .18), 'density'] = np.nan
+    for i in range(1, int(df_fib.ring.max() / 2) + 1):
+        w_list = df_fib[(df_fib.ring == i + 1) & (df_fib.ddiff > .18)].wedge.unique()
+        if len(w_list) > 0:
+            df_fib.loc[(df_fib.ring == i) & df_fib.wedge.isin(w_list), 'density'] = np.nan
+
+    df_fib.density = df_fib.density * 100
     df_fib.rename(columns={'density': 'Density (%)', 'wedge': 'Wedge'}, inplace=True)
-    df_fib['t (%)'] = df_fib.ring / df_fib.ring.max()
-    df_fib = df_fib[~df_fib.ring.isin([df_fib.ring.min(), df_fib.ring.max()])]
+    df_fib['t (%)'] = df_fib.ring / df_fib.ring.max() * 100
+    df_fib.dropna(subset=['Wedge', 'Density (%)'], inplace=True)
 
     fig = px.line(df_fib, x="t (%)", y="Density (%)", color='Wedge', template='plotly_white')
 
@@ -278,19 +295,19 @@ def plotRing(df_fib, img_path, resize=200, figureOpt=1):
     fig.add_layout_image(
         dict(
             source=img,
-            x=0.95,
-            y=0.1,
+            x=0.05,
+            y=0.95,
         ))
     fig.update_layout_images(dict(
         xref="paper",
         yref="paper",
         sizex=0.30,
         sizey=0.30,
-        xanchor="right",
-        yanchor="bottom"
+        xanchor="left",
+        yanchor="top"
     ))
-
-    fig.update_layout(font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=5))
+    fig.update_layout(yaxis_range=[0, 100], xaxis_range=[0, 100], yaxis_ticksuffix="%", xaxis_ticksuffix="%",
+                      font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=5))
     return fig
 
 
