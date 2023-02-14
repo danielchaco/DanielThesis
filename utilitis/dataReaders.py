@@ -218,11 +218,12 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
     df.reset_index(drop=True, inplace=True)
     max_tau = df['$\\tau (ksi)$'].max()
-    fig = px.scatter(df, cols, '$\\tau (ksi)$', color_discrete_sequence=colors, opacity=1)
+    df.rename(columns={'$\\tau (ksi)$':'$\\tau_{23} (ksi)$'},inplace=True)
+    fig = px.scatter(df, cols, '$\\tau_{23} (ksi)$', color_discrete_sequence=colors, opacity=1)
     fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
     fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
-                      xaxis=dict(title='$\gamma$'), legend_title="", yaxis_range=[0, max_tau],
-                      legend=dict(yanchor="top", y=1, xanchor="left", x=0))  # height=400, width=900,
+                      xaxis=dict(title='$\gamma_{23}$'), legend_title="", yaxis_range=[0, max_tau*1.1],
+                      legend=dict(yanchor="bottom", y=0, xanchor="right", x=1))  # height=400, width=900,
     # trendlines
     frm = int(len(df) * min_max[0])
     to = int(len(df) * min_max[1])
@@ -230,7 +231,7 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     for i, col in enumerate(cols):
         df_c = df[~pd.isnull(df[col])]
         x = df_c.loc[frm:to, col].to_numpy()
-        y = df_c.loc[frm:to, '$\\tau (ksi)$'].to_numpy()
+        y = df_c.loc[frm:to, '$\\tau_{23} (ksi)$'].to_numpy()
         data = odr.Data(x, y)
         odr_obj = odr.ODR(data, odr.unilinear)
         output = odr_obj.run()
@@ -476,7 +477,7 @@ def mergeData(df_load, df_dic=None, phy_bot=None, phy_top=None):
     return df
 
 
-def getCProp(df_ring_prop, top_i, bot_i, transverse = True):
+def getCProp(df_ring_prop, top_i, bot_i, transverse=True, return_df=False):
     df = df_ring_prop.loc[df_ring_prop.index.isin([top_i, bot_i]), df_ring_prop.columns].rename(
         index={top_i: 'Top', bot_i: 'Bottom'})  # reset_index()
     df['Fiber Density'] = df['Fiber Density'] * 100
@@ -490,3 +491,43 @@ def getCProp(df_ring_prop, top_i, bot_i, transverse = True):
         print(df.T.to_latex(float_format="%.2f", escape=False))
     else:
         print(df.to_latex(float_format="%.2f", escape=False))
+    if return_df:
+        return df
+
+
+def getBowTieLatex(df_bowtie, culm, internode, transverse=False, return_df=False):
+    df = df_bowtie[(df_bowtie.culm == culm) & (df_bowtie.internode <= internode + 2) & (
+            df_bowtie.internode >= internode - 2)].reset_index()
+    df.loc[pd.isnull(df['max_load (lbf)']), 'max_load (lbf)'] = df.loc[pd.isnull(df['max_load (lbf)']), 'Max load (lb)']
+    df = df[['ID', 't_avg (in)', 'l_avg (in)', 'A (in^2)', 'max_load (lbf)', 'Shear Strength (psi)', 'MC (%)']]
+    df.sort_values('ID', inplace=True, ignore_index=True)
+    df['MC (%)'] = [mc.replace('%', '') for mc in df['MC (%)']]
+    df['Shear Strength (psi)'] = df['Shear Strength (psi)'] / 1000
+    df.rename(columns={'ID': '\textbf{Sample}', 't_avg (in)': '$t_{avg} (in)$', 'l_avg (in)': '$l_{avg} (in)$',
+                       'A (in^2)': '$A (in^2)$', 'max_load (lbf)': '$F (lb)$', 'Shear Strength (psi)': '$\tau_u (ksi)$',
+                       'MC (%)': '$MC (\%)$'}, inplace=True)
+    if transverse:
+        print(df.T.to_latex(float_format="%.2f", escape=False, index=False))
+    else:
+        print(df.to_latex(float_format="%.2f", escape=False, index=False))
+    if return_df:
+        return df
+
+
+def getODLatex(df_diameters, culm, internode, print_info=True, return_df=False):
+    df = df_diameters[(df_diameters['ID Culm'] == culm) & (df_diameters['Internode'] == internode)]
+    if print_info:
+        print('MC:', df['MC (%)'].values[0], '%')
+        print('Date:', df['Date'].values[0])
+    df = df[['D1 (in) N-S', 'D1 (in) E-W', 'D2 (in) N-S',
+             'D2 (in) E-W', 'D3 (in) N-S', 'D3 (in) E-W']].T
+    col = df.columns[0]
+    df.rename(columns={col: '$OD (in)$'}, inplace=True)
+    df[['pos', 'dim', 'ori']] = [i.split(' ') for i in df.index]
+    df.pos = [pos.replace('D', '') for pos in df.pos]
+    df = df.groupby(['pos', 'ori']).mean()
+    ls = df.to_latex(float_format="%.2f", escape=False).split('\n')
+    del ls[3]
+    print('\n'.join(ls))
+    if return_df:
+        return df
