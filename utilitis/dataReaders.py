@@ -201,7 +201,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     return df
 
 
-def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max=(0.15, 0.5)):
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max=(0.15, 0.5),tau_bt = None):
     """
     Regression using Orthogonal Distance Regression method.
     resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
@@ -213,7 +213,6 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     end_time = end_time if type(end_time) != str else pd.to_datetime(end_time)
     cols = [col for col in df.columns if col in ['$\gamma_{DIC}$', '$\gamma_{phones}$']]
     if not colors:
-        # colors = px.colors.sequential.thermal
         colors = px.colors.qualitative.Pastel
     df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
     df.reset_index(drop=True, inplace=True)
@@ -241,6 +240,11 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
                                    line={'width': 1, 'dash': ['dash', 'dashdot'][i], 'color': px.colors.sequential.gray[
                                        i * 4]}))  # ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot','solid']
         G.append(a)
+    if tau_bt:
+        x_min = np.min(df[cols].min().values)
+        x_max = np.max(df[cols].max().values)
+        fig.add_trace(go.Scattergl(x=[x_min,x_max],y = [tau_bt,tau_bt], mode = 'lines', name = f'$\\tau = {tau_bt} ksi$',
+                                   line={'width': 1, 'dash': 'longdash', 'color':'red'}))
     if title:
         fig.update_layout(title=title)
     if fig_show:
