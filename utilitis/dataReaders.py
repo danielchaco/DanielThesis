@@ -515,7 +515,6 @@ def getBowTieLatex(df_bowtie, culm, internode, transverse=False, return_df=False
 
 
 def getODLatex(df_diameters, culm, internode, transverse=False, print_info=True, return_df=False):
-    getODLatex(df_diameters, culm, internode, transverse=False, print_info=True, return_df=False):
     df = df_diameters[(df_diameters['ID Culm'] == culm) & (df_diameters['Internode'] == internode)]
     if print_info:
         print('MC:', df['MC (%)'].values[0], '%')
@@ -538,7 +537,7 @@ def getODLatex(df_diameters, culm, internode, transverse=False, print_info=True,
         return df
 
 
-def read_df_merged(paths,culm,internode):
+def read_df_merged(paths, culm, internode):
     for path in paths:
         bn = os.path.basename(path)
         if f'{culm}_{internode}_' in bn[:6]:
