@@ -514,20 +514,34 @@ def getBowTieLatex(df_bowtie, culm, internode, transverse=False, return_df=False
         return df
 
 
-def getODLatex(df_diameters, culm, internode, print_info=True, return_df=False):
+def getODLatex(df_diameters, culm, internode, transverse=False, print_info=True, return_df=False):
+    getODLatex(df_diameters, culm, internode, transverse=False, print_info=True, return_df=False):
     df = df_diameters[(df_diameters['ID Culm'] == culm) & (df_diameters['Internode'] == internode)]
     if print_info:
         print('MC:', df['MC (%)'].values[0], '%')
         print('Date:', df['Date'].values[0])
     df = df[['D1 (in) N-S', 'D1 (in) E-W', 'D2 (in) N-S',
-             'D2 (in) E-W', 'D3 (in) N-S', 'D3 (in) E-W']].T
-    col = df.columns[0]
-    df.rename(columns={col: '$OD (in)$'}, inplace=True)
-    df[['pos', 'dim', 'ori']] = [i.split(' ') for i in df.index]
-    df.pos = [pos.replace('D', '') for pos in df.pos]
-    df = df.groupby(['pos', 'ori']).mean()
-    ls = df.to_latex(float_format="%.2f", escape=False).split('\n')
-    del ls[3]
-    print('\n'.join(ls))
+             'D2 (in) E-W', 'D3 (in) N-S', 'D3 (in) E-W']]  # .T
+    df.index = ['$OD (in)$']
+    if transverse:
+        df = df.T
+        df[['pos', 'dim', 'ori']] = [i.split(' ') for i in df.index]
+        df.pos = [pos.replace('D', '') for pos in df.pos]
+        df = df.groupby(['pos', 'ori']).mean()
+        ls = df.to_latex(float_format="%.2f", escape=False).split('\n')
+        del ls[3]
+        print('\n'.join(ls))
+    else:
+        df.columns = [col.replace('D', '').replace(' (in)', '') for col in df.columns]
+        print(df.to_latex(float_format="%.2f", escape=False))
     if return_df:
         return df
+
+
+def read_df_merged(paths,culm,internode):
+    for path in paths:
+        bn = os.path.basename(path)
+        if f'{culm}_{internode}_' in bn[:6]:
+            df = pd.read_csv(path)
+            df.datetime = pd.to_datetime(df.datetime)
+            return df
