@@ -476,7 +476,7 @@ def mergeData(df_load, df_dic=None, phy_bot=None, phy_top=None):
     return df
 
 
-def getCProp(df_ring_prop, top_i, bot_i):
+def getCProp(df_ring_prop, top_i, bot_i, transverse = True):
     df = df_ring_prop.loc[df_ring_prop.index.isin([top_i, bot_i]), df_ring_prop.columns].rename(
         index={top_i: 'Top', bot_i: 'Bottom'})  # reset_index()
     df['Fiber Density'] = df['Fiber Density'] * 100
@@ -486,4 +486,7 @@ def getCProp(df_ring_prop, top_i, bot_i):
         columns={'outer_diameter_in': '$OD (in)$', 'inner_diameter_in': '$ID (in)$', 'bamboo_thickness_in': '$t (in)$',
                  'area_in2': '$A (in^{2})$', 'Ix_in4': '$I_x (in^4)$', 'Iy_in4': '$I_y (in^4)$', 'J_in4': '$J (in^4)$',
                  'Fiber Density': '$F (\%)$'}, inplace=True)
-    print(df.T.to_latex(float_format="%.2f", escape=False))
+    if transverse:
+        print(df.T.to_latex(float_format="%.2f", escape=False))
+    else:
+        print(df.to_latex(float_format="%.2f", escape=False))
