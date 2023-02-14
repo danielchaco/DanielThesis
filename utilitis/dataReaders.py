@@ -98,7 +98,7 @@ def merge_phyphox_data(phyphox_data):
                         df.loc[frm[0]:to[-1], 't'] = df.loc[frm[0]:to[-1], 't (s)'] - df_t['experiment time'][start]
                         start, end = None, None
                 df['datetime'] = pd.to_datetime(df['datetime']) + pd.to_timedelta(df['t'], unit='s')
-                df.drop(columns=['t'],inplace=True)
+                df.drop(columns=['t'], inplace=True)
                 df.datetime = df.datetime.dt.tz_localize(None)
                 return df
         print('metadata file time.csv, not found.')
@@ -261,8 +261,8 @@ def plotRing(df_fib, img_path, resize=200, figureOpt=1):
         for r in df_fib.ring.unique():
             try:
                 df_fib.loc[(df_fib.ring == r) & (df_fib.wedge == w), 'ddiff'] = \
-                df_fib.loc[(df_fib.ring == r) & (df_fib.wedge == w), 'density'].values[0] - \
-                df_fib.loc[(df_fib.ring == r - 1) & (df_fib.wedge == w), 'density'].values[0]
+                    df_fib.loc[(df_fib.ring == r) & (df_fib.wedge == w), 'density'].values[0] - \
+                    df_fib.loc[(df_fib.ring == r - 1) & (df_fib.wedge == w), 'density'].values[0]
             except:
                 pass
     df_fib.ddiff = df_fib.ddiff.abs()
@@ -360,7 +360,7 @@ def max_ortho_dist_index(df):
     return idx[np.where(d == d.max())[0][0]]
 
 
-def failure_times(df_load, df_dic = None, phy_bot = None, phy_top = None, failure_time_aprox= None):
+def failure_times(df_load, df_dic=None, phy_bot=None, phy_top=None, failure_time_aprox=None):
     """
     define the time where the sample reaches the max load
     :param phy_top:
@@ -423,7 +423,7 @@ def get_seconds(t1, t2):
         return (t1 - t2).item() / 10 ** 9
 
 
-def mergeData(df_load, df_dic = None, phy_bot = None, phy_top = None):
+def mergeData(df_load, df_dic=None, phy_bot=None, phy_top=None):
     """
     marge load cell, phones and DIC data, after matching failure point
     :param df_load:
@@ -474,3 +474,16 @@ def mergeData(df_load, df_dic = None, phy_bot = None, phy_top = None):
                        'mean', 'median']:
             df[col] = df[col].interpolate()
     return df
+
+
+def getCProp(df_ring_prop, top_i, bot_i):
+    df = df_ring_prop.loc[df_ring_prop.index.isin([top_i, bot_i]), df_ring_prop.columns].rename(
+        index={top_i: 'Top', bot_i: 'Bottom'})  # reset_index()
+    df['Fiber Density'] = df['Fiber Density'] * 100
+    df = df[['outer_diameter_in', 'inner_diameter_in', 'bamboo_thickness_in', 'area_in2', 'Ix_in4', 'Iy_in4', 'J_in4',
+             'Fiber Density']]
+    df.rename(
+        columns={'outer_diameter_in': '$OD (in)$', 'inner_diameter_in': '$ID (in)$', 'bamboo_thickness_in': '$t (in)$',
+                 'area_in2': '$A (in^{2})$', 'Ix_in4': '$I_x (in^4)$', 'Iy_in4': '$I_y (in^4)$', 'J_in4': '$J (in^4)$',
+                 'Fiber Density': '$F (\%)$'}, inplace=True)
+    print(df.T.to_latex(float_format="%.2f", escape=False))
