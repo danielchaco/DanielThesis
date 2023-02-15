@@ -201,7 +201,7 @@ def loadDIC(path, df_DIC_info, sampleID: str, camera='r', by='lastFrame'):
     return df
 
 
-def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max=(0.15, 0.5),tau_bt = None):
+def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None, min_max=(0.15, 0.5), tau_bt = None):
     """
     Regression using Orthogonal Distance Regression method.
     resources: https://github.com/plotly/plotly.py/issues/2345#issuecomment-858396014
@@ -219,8 +219,8 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     max_tau = df['$\\tau (ksi)$'].max()
     df.rename(columns={'$\\tau (ksi)$':'$\\tau_{23} (ksi)$'},inplace=True)
     fig = px.scatter(df, cols, '$\\tau_{23} (ksi)$', color_discrete_sequence=colors, opacity=1)
-    fig.update_traces(marker=dict(size=4))  # ,line=dict(width=2,color=colors)
-    fig.update_layout(template='plotly_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0),
+    fig.update_traces(marker=dict(size=1))  # ,line=dict(width=2,color=colors)
+    fig.update_layout(template='simple_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0), #plotly_white
                       xaxis=dict(title='$\gamma_{23}$'), legend_title="", yaxis_range=[0, max_tau*1.1],
                       legend=dict(yanchor="bottom", y=0, xanchor="right", x=1))  # height=400, width=900,
     # trendlines
@@ -244,7 +244,7 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
         x_min = np.min(df[cols].min().values)
         x_max = np.max(df[cols].max().values)
         fig.add_trace(go.Scattergl(x=[x_min,x_max],y = [tau_bt,tau_bt], mode = 'lines', name = f'$\\tau = {tau_bt} ksi$',
-                                   line={'width': 1, 'dash': 'longdash', 'color':'red'}))
+                                   line={'width': 1, 'dash': 'dash', 'color':'red'}))
     if title:
         fig.update_layout(title=title)
     if fig_show:
