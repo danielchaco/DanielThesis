@@ -222,7 +222,7 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
     fig.update_traces(marker=dict(size=1.5))  # ,line=dict(width=2,color=colors)
     fig.update_layout(template='simple_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0), #plotly_white
                       xaxis=dict(title='$\gamma_{23}$'), legend_title="", yaxis_range=[0, max_tau*1.1],
-                      legend=dict(yanchor="bottom", y=0.3, xanchor="right", x=.98))  # height=400, width=900,
+                      legend=dict(yanchor="bottom", y=0.02, xanchor="right", x=.98))  # height=400, width=900,
     # trendlines
     frm = int(len(df) * min_max[0])
     to = int(len(df) * min_max[1])
