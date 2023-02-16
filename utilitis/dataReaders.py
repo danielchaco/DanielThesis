@@ -216,13 +216,13 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
         colors = px.colors.qualitative.Pastel
     df = df.loc[(df.datetime >= start_time) & (df.datetime <= end_time), ['$\\tau (ksi)$'] + cols]
     df.reset_index(drop=True, inplace=True)
-    max_tau = df['$\\tau (ksi)$'].max()
+    max_tau = max(df['$\\tau (ksi)$'].max(),tau_bt) if tau_bt else df['$\\tau (ksi)$'].max()
     df.rename(columns={'$\\tau (ksi)$':'$\\tau_{23} (ksi)$'},inplace=True)
-    fig = px.scatter(df, cols, '$\\tau_{23} (ksi)$', color_discrete_sequence=colors, opacity=1)
-    fig.update_traces(marker=dict(size=1))  # ,line=dict(width=2,color=colors)
+    fig = px.scatter(df, cols, '$\\tau_{23} (ksi)$', color_discrete_sequence=colors, opacity=.9)
+    fig.update_traces(marker=dict(size=1.5))  # ,line=dict(width=2,color=colors)
     fig.update_layout(template='simple_white', font_family='Times New Roman', margin=dict(l=5, r=10, t=10, b=0), #plotly_white
                       xaxis=dict(title='$\gamma_{23}$'), legend_title="", yaxis_range=[0, max_tau*1.1],
-                      legend=dict(yanchor="bottom", y=0, xanchor="right", x=1))  # height=400, width=900,
+                      legend=dict(yanchor="bottom", y=0.3, xanchor="right", x=.98))  # height=400, width=900,
     # trendlines
     frm = int(len(df) * min_max[0])
     to = int(len(df) * min_max[1])
@@ -241,10 +241,10 @@ def ODR_results(df, start_time, end_time, fig_show=True, title=None, colors=None
                                        i * 4]}))  # ['dash', 'dashdot', 'dot', 'longdash', 'longdashdot','solid']
         G.append(a)
     if tau_bt:
-        x_min = np.min(df[cols].min().values)
-        x_max = np.max(df[cols].max().values)
+        x_min = np.min(df[cols].min().values) - .001
+        x_max = np.max(df[cols].max().values) + .001
         fig.add_trace(go.Scattergl(x=[x_min,x_max],y = [tau_bt,tau_bt], mode = 'lines', name = f'$\\tau = {tau_bt} ksi$',
-                                   line={'width': 1, 'dash': 'dash', 'color':'red'}))
+                                   line={'width': 1, 'dash': 'longdash', 'color':'red'}))
     if title:
         fig.update_layout(title=title)
     if fig_show:
